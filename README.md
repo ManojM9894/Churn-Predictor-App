@@ -104,6 +104,6 @@ MIT © [Manoj Mandava](https://github.com/ManojM9894)
 ## Connect with Me
 
 - GitHub: [@ManojM9894](https://github.com/ManojM9894)
-- LinkedIn: *Add your LinkedIn here if you'd like to display it*
+- LinkedIn: https://www.linkedin.com/in/manojmandava9894
 
 > If you found this helpful, give it a ⭐ on GitHub to support the project!
