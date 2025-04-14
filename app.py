@@ -66,17 +66,25 @@ if uploaded_file is not None:
         st.download_button("📥 Download Top 50 Risky Customers", top_csv, "top_50_risky_customers.csv", "text/csv")
 
         # Customer prediction block
+        preferred_ids = ["customerID", "Customer Name", "Name", "CustomerId", "RowNumber", "ID"]
+        customer_id_col = next((col for col in preferred_ids if col in df.columns and df[col].is_unique), None)
+
+        if customer_id_col is None:
+            customer_id_col = df.index.name if df.index.name else "index"
+
+
         st.subheader("👤 Predict Churn for a Customer")
         st.markdown("Select a customer from all customers, sorted by churn risk.")
 
         customer_id_col = "customerID" if "customerID" in df.columns else df.index.name or "index"
         sorted_ids = df_results.sort_values(by="Probability", ascending=False)[customer_id_col].astype(str).tolist() if customer_id_col in df_results.columns else df_results.index.astype(str).tolist()
 
-        entry_mode = st.radio("Choose input method:", ["Dropdown", "Free Text"], horizontal=True)
+        entry_mode = st.radio("Choose input method:", ["Dropdown", "Type to search by ID or Name"], horizontal=True)
+
         if entry_mode == "Dropdown":
             manual_id = st.selectbox("Select Customer ID (sorted by churn risk):", options=sorted_ids, index=0, key="manual_id_dropdown")
         else:
-            manual_id = st.text_input("Enter Customer ID or Index (partial match supported):", key="manual_id_text")
+            manual_id = st.text_input("Search by customer ID or name:", key="manual_id_text")
 
         active_id = manual_id
 
