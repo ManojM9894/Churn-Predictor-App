@@ -6,8 +6,7 @@ joblib
 matplotlib~=3.9.4
 seaborn
 shap~=0.47.1
-
-
 imbalanced-learn~=0.12.4
 numpy~=2.0.2
 np~=1.0.2
+rapidfuzz~=3.12.1

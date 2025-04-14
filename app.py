@@ -116,59 +116,59 @@ if uploaded_file is not None:
             try:
                 if customer_id_col in df.columns:
                     choices = df[customer_id_col].astype(str).tolist()
-                match = process.extractOne(active_id, choices, score_cutoff=60)
+                    match = process.extractOne(active_id, choices, score_cutoff=60)
 
-                if match:
-                    selected_row = df[df[customer_id_col].astype(str) == match[0]]
-                    st.caption(f"Best match: `{match[0]}` with confidence {match[1]:.1f}%")
+                    if match:
+                        selected_row = df[df[customer_id_col].astype(str) == match[0]]
+                        st.caption(f"Best match: `{match[0]}` with confidence {match[1]:.1f}%")
+                    else:
+                        selected_row = pd.DataFrame()
                 else:
-                    selected_row = pd.DataFrame()
-                else:
-                selected_row = df[df.index.astype(str) == str(active_id)]
+                    selected_row = df[df.index.astype(str) == str(active_id)]
 
-            if selected_row.empty:
-                raise ValueError("No matching customer found.")
+                if selected_row.empty:
+                    raise ValueError("No matching customer found.")
 
-            encoded_row = apply_encoders(selected_row.copy(), encoders)
-            encoded_row = encoded_row[feature_cols]
-            pred_prob = model.predict_proba(encoded_row)[0][1]
-            churn_risk = "🚨 High Risk" if pred_prob > 0.7 else "⚠️ Medium Risk" if pred_prob > 0.4 else "✅ Low Risk"
-            st.markdown(f"### Prediction for `{active_id}`")
-            st.metric("Churn Probability", f"{pred_prob * 100:.2f}%", help=churn_risk)
-            st.dataframe(selected_row)
-        except Exception as e:
-        st.error(f"Customer not found or invalid input: {e}")
+                encoded_row = apply_encoders(selected_row.copy(), encoders)
+                encoded_row = encoded_row[feature_cols]
+                pred_prob = model.predict_proba(encoded_row)[0][1]
+                churn_risk = "🚨 High Risk" if pred_prob > 0.7 else "⚠️ Medium Risk" if pred_prob > 0.4 else "✅ Low Risk"
+                st.markdown(f"### Prediction for `{active_id}`")
+                st.metric("Churn Probability", f"{pred_prob * 100:.2f}%", help=churn_risk)
+                st.dataframe(selected_row)
+            except Exception as e:
+                st.error(f"Customer not found or invalid input: {e}")
 
-st.subheader("📊 Churn KPIs")
-total_customers = len(df_results)
-churn_rate = df_results["Prediction"].mean() * 100
-avg_risk_score = df_results["Probability"].mean() * 100
+        st.subheader("📊 Churn KPIs")
+        total_customers = len(df_results)
+        churn_rate = df_results["Prediction"].mean() * 100
+        avg_risk_score = df_results["Probability"].mean() * 100
 
-col1, col2, col3 = st.columns(3)
-col1.metric("Total Customers", f"{total_customers:,}")
-col2.metric("Churn Rate", f"{churn_rate:.2f}%")
-col3.metric("Avg. Risk Score", f"{avg_risk_score:.2f}%")
+        col1, col2, col3 = st.columns(3)
+        col1.metric("Total Customers", f"{total_customers:,}")
+        col2.metric("Churn Rate", f"{churn_rate:.2f}%")
+        col3.metric("Avg. Risk Score", f"{avg_risk_score:.2f}%")
 
-st.subheader("📈 Churn Risk Distribution (All Customers)")
-risk_counts = df_results["Risk Segment"].value_counts()
-fig, ax = plt.subplots()
-colors = ["#EF4444", "#FACC15", "#22C55E"]  # Red, Yellow, Green
-ax.pie(risk_counts, labels=risk_counts.index, colors=colors, autopct="%1.1f%%", startangle=90)
-ax.axis("equal")
-st.pyplot(fig)
+        st.subheader("📈 Churn Risk Distribution (All Customers)")
+        risk_counts = df_results["Risk Segment"].value_counts()
+        fig, ax = plt.subplots()
+        colors = ["#EF4444", "#FACC15", "#22C55E"]  # Red, Yellow, Green
+        ax.pie(risk_counts, labels=risk_counts.index, colors=colors, autopct="%1.1f%%", startangle=90)
+        ax.axis("equal")
+        st.pyplot(fig)
 
-st.subheader("📊 Top Churn Drivers (Global Feature Importance)")
-rf_model = model.named_estimators_["rf"]
-importances = pd.Series(rf_model.feature_importances_, index=feature_cols).sort_values(ascending=True)
+        st.subheader("📊 Top Churn Drivers (Global Feature Importance)")
+        rf_model = model.named_estimators_["rf"]
+        importances = pd.Series(rf_model.feature_importances_, index=feature_cols).sort_values(ascending=True)
 
-fig, ax = plt.subplots(figsize=(10, 6))
-importances.plot(kind="bar", ax=ax)
-ax.set_title("Top Churn Indicators")
-ax.set_xlabel("Importance Score")
-st.pyplot(fig)
+        fig, ax = plt.subplots(figsize=(10, 6))
+        importances.plot(kind="bar", ax=ax)
+        ax.set_title("Top Churn Indicators")
+        ax.set_xlabel("Importance Score")
+        st.pyplot(fig)
 
-st.subheader("📝 Download All Predictions")
-csv_data = df_results.to_csv(index=False).encode("utf-8")
-st.download_button("📥 Download All Predictions", csv_data, "churn_predictions.csv", "text/csv")
+        st.subheader("📝 Download All Predictions")
+        csv_data = df_results.to_csv(index=False).encode("utf-8")
+        st.download_button("📥 Download All Predictions", csv_data, "churn_predictions.csv", "text/csv")
 else:
-st.info("Please upload a CSV file to get started.")
+    st.info("Please upload a CSV file to get started.")
