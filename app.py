@@ -72,11 +72,10 @@ if uploaded_file is not None:
         if customer_id_col is None:
             customer_id_col = df.index.name if df.index.name else "index"
 
-
         st.subheader("👤 Predict Churn for a Customer")
         st.markdown("Select a customer from all customers, sorted by churn risk.")
+        st.caption(f"Using `{customer_id_col}` as the customer identifier column.")
 
-        customer_id_col = "customerID" if "customerID" in df.columns else df.index.name or "index"
         sorted_ids = df_results.sort_values(by="Probability", ascending=False)[customer_id_col].astype(str).tolist() if customer_id_col in df_results.columns else df_results.index.astype(str).tolist()
 
         entry_mode = st.radio("Choose input method:", ["Dropdown", "Type to search by ID or Name"], horizontal=True)
