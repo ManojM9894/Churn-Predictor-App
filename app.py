@@ -36,7 +36,7 @@ if uploaded_file is not None:
         st.session_state.df_results = None
         st.session_state.top_50 = None
 
-    if st.button("Train Model"):
+    if st.button("Predict Churn"):
         model, encoders, feature_cols = train_model_from_upload(df, target_column)
         df_encoded = apply_encoders(df.copy(), encoders)
         df_encoded = df_encoded[feature_cols]
