@@ -154,7 +154,12 @@ if uploaded_file is not None:
         from sklearn.metrics import confusion_matrix, ConfusionMatrixDisplay
 
         try:
-            cm = confusion_matrix(df_results[target_column], df_results["Prediction"])
+            from sklearn.preprocessing import LabelEncoder
+
+            true_labels = df_results[target_column]
+            if true_labels.dtype == object:
+                true_labels = LabelEncoder().fit_transform(true_labels)
+            cm = confusion_matrix(true_labels, df_results["Prediction"])
             disp = ConfusionMatrixDisplay(confusion_matrix=cm)
             fig_cm, ax_cm = plt.subplots()
             disp.plot(ax=ax_cm)
