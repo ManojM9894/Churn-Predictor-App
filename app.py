@@ -8,7 +8,7 @@ from train_dynamic import (
 )
 
 st.set_page_config(page_title="Churn Predictor App")
-st.title(":bar_chart: Churn Predictor App")
+st.title("\U0001F4C8 Churn Predictor App")
 
 uploaded_file = st.file_uploader("Upload your CSV or Excel dataset", type=["csv", "xlsx"])
 
@@ -57,7 +57,7 @@ if uploaded_file is not None:
         df_results = st.session_state.df_results
         top_50 = st.session_state.top_50
 
-        st.subheader(":money_with_wings: Top 50 Customers Likely to Churn")
+        st.subheader("\U0001F4B8 Top 50 Customers Likely to Churn")
         st.dataframe(
             top_50[["customerID", "Prediction", "Probability"]] if "customerID" in top_50.columns else top_50[["Prediction", "Probability"]]
         )
@@ -65,12 +65,12 @@ if uploaded_file is not None:
         top_csv = top_50.to_csv(index=False).encode("utf-8")
         st.download_button("📥 Download Top 50 Risky Customers", top_csv, "top_50_risky_customers.csv", "text/csv")
 
-        # Determine best identifier column
+        # --- Determine identifier column ---
         preferred_ids = ["customerID", "Customer Name", "Name", "CustomerId", "RowNumber", "ID"]
         customer_id_col = next((col for col in preferred_ids if col in df.columns and df[col].is_unique), None)
         if customer_id_col is None:
-            customer_id_col = df.index.name if df.index.name else "index"
-            df["index"] = df.index  # Add index to dataframe explicitly if not present
+            df = df.reset_index()  # Ensure index is usable
+            customer_id_col = "index"
 
         st.subheader("👤 Predict Churn for a Customer")
         st.markdown("Select a customer from all customers, sorted by churn risk.")
@@ -92,7 +92,11 @@ if uploaded_file is not None:
                 if customer_id_col in df.columns:
                     selected_row = df[df[customer_id_col].astype(str).str.contains(active_id, case=False, na=False)]
                 else:
-                    selected_row = df.loc[[int(active_id)]]
+                    selected_row = df[df.index.astype(str) == str(active_id)]
+
+                if selected_row.empty:
+                    raise ValueError("No matching customer found.")
+
                 encoded_row = apply_encoders(selected_row.copy(), encoders)
                 encoded_row = encoded_row[feature_cols]
                 pred_prob = model.predict_proba(encoded_row)[0][1]
