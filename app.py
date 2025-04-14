@@ -162,22 +162,23 @@ if uploaded_file is not None:
             cm = confusion_matrix(true_labels, df_results["Prediction"])
             disp = ConfusionMatrixDisplay(confusion_matrix=cm)
             fig_cm, ax_cm = plt.subplots()
-            disp.plot(ax=ax_cm)
+            disp.plot(ax=ax_cm, cmap="Blues")
             st.pyplot(fig_cm)
         except Exception as e:
             st.warning(f"Confusion Matrix could not be displayed: {e}")
 
-        st.subheader("📊 Churn Rate by Contract Type")
         try:
-            chart = df_results.groupby("Contract")["Prediction"].mean().sort_values()
-            st.bar_chart(chart)
+            if "Contract" in df_results.columns:
+                st.subheader("📊 Churn Rate by Contract Type")
+                chart = df_results.groupby("Contract")["Prediction"].mean().sort_values()
+                st.bar_chart(chart)
         except Exception as e:
-            st.info("Upload a dataset with 'Contract' column to enable this chart.")
+            st.warning(f"Churn rate by contract type could not be displayed: {e}")
 
         st.subheader("📈 Churn Risk Distribution (All Customers)")
-        risk_counts = df_results["Risk Segment"].value_counts()
+        risk_counts = df_results["Risk Segment"].value_counts().reindex(["✅ Low", "⚠️ Medium", "🚨 High"]).dropna()
         fig, ax = plt.subplots()
-        colors = ["#EF4444", "#FACC15", "#22C55E"]  # Red, Yellow, Green
+        colors = ["#10B981", "#FACC15", "#EF4444"]  # Red, Yellow, Green
         ax.pie(risk_counts, labels=risk_counts.index, colors=colors, autopct="%1.1f%%", startangle=90)
         ax.axis("equal")
         st.pyplot(fig)
