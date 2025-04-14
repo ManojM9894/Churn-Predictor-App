@@ -27,12 +27,6 @@ Try the churn prediction tool in your browser:
 
 ---
 
-## Live Demo
-
-Launch here → [churn-predictor-app-er7gei7fod3qck79vpfv2j.streamlit.app](https://churn-predictor-app-er7gei7fod3qck79vpfv2j.streamlit.app/)
-
----
-
 ## Tech Stack
 
 - Python 3.11
