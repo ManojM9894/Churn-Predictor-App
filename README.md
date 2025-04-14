@@ -3,7 +3,12 @@
 A customizable churn analytics solution for data-driven teams.
 Ingest your customer data, generate predictions, and explore risk breakdowns visually and interactively.
 
-[![Streamlit App](https://img.shields.io/badge/Live%20App-Click%20to%20Open-red?logo=streamlit)](https://churn-predictor-app-er7gei7fod3qck79vpfv2j.streamlit.app/) ![Python](https://img.shields.io/badge/Python-3.11-blue?logo=python) ![Status](https://img.shields.io/badge/Status-Production--Ready-brightgreen)
+## Try It Out
+
+Try the churn prediction tool in your browser:  
+[Click here to open the Streamlit App](https://churn-predictor-app-er7gei7fod3qck79vpfv2j.streamlit.app/)
+
+[![Streamlit App](https://img.shields.io/badge/Live%20App-Click%20to%20Open-red?logo=streamlit)][Python](https://img.shields.io/badge/Python-3.11-blue?logo=python) ![Status](https://img.shields.io/badge/Status-Production--Ready-brightgreen)
 
 ---
 
