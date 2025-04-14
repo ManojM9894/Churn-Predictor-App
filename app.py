@@ -76,7 +76,10 @@ if uploaded_file is not None:
         st.markdown("Select a customer from all customers, sorted by churn risk.")
         st.caption(f"Using `{customer_id_col}` as the customer identifier column.")
 
-        sorted_ids = df_results.sort_values(by="Probability", ascending=False)[customer_id_col].astype(str).tolist()
+        if customer_id_col in df_results.columns:
+            sorted_ids = df_results.sort_values(by="Probability", ascending=False)[customer_id_col].astype(str).tolist()
+        else:
+            sorted_ids = df_results.index.astype(str).tolist()
 
         entry_mode = st.radio("Choose input method:", ["Dropdown", "Type to search by ID or Name"], horizontal=True)
 
