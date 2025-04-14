@@ -8,7 +8,7 @@ from train_dynamic import (
 )
 
 st.set_page_config(page_title="Churn Predictor App")
-st.title("\U0001F4C8 Churn Predictor App")
+st.title(":bar_chart: Churn Predictor App")
 
 uploaded_file = st.file_uploader("Upload your CSV or Excel dataset", type=["csv", "xlsx"])
 
@@ -57,7 +57,7 @@ if uploaded_file is not None:
         df_results = st.session_state.df_results
         top_50 = st.session_state.top_50
 
-        st.subheader("\U0001F4B8 Top 50 Customers Likely to Churn")
+        st.subheader(":money_with_wings: Top 50 Customers Likely to Churn")
         st.dataframe(
             top_50[["customerID", "Prediction", "Probability"]] if "customerID" in top_50.columns else top_50[["Prediction", "Probability"]]
         )
@@ -65,18 +65,18 @@ if uploaded_file is not None:
         top_csv = top_50.to_csv(index=False).encode("utf-8")
         st.download_button("📥 Download Top 50 Risky Customers", top_csv, "top_50_risky_customers.csv", "text/csv")
 
-        # Customer prediction block
+        # Determine best identifier column
         preferred_ids = ["customerID", "Customer Name", "Name", "CustomerId", "RowNumber", "ID"]
         customer_id_col = next((col for col in preferred_ids if col in df.columns and df[col].is_unique), None)
-
         if customer_id_col is None:
             customer_id_col = df.index.name if df.index.name else "index"
+            df["index"] = df.index  # Add index to dataframe explicitly if not present
 
         st.subheader("👤 Predict Churn for a Customer")
         st.markdown("Select a customer from all customers, sorted by churn risk.")
         st.caption(f"Using `{customer_id_col}` as the customer identifier column.")
 
-        sorted_ids = df_results.sort_values(by="Probability", ascending=False)[customer_id_col].astype(str).tolist() if customer_id_col in df_results.columns else df_results.index.astype(str).tolist()
+        sorted_ids = df_results.sort_values(by="Probability", ascending=False)[customer_id_col].astype(str).tolist()
 
         entry_mode = st.radio("Choose input method:", ["Dropdown", "Type to search by ID or Name"], horizontal=True)
 
@@ -89,7 +89,10 @@ if uploaded_file is not None:
 
         if active_id:
             try:
-                selected_row = df[df[customer_id_col].astype(str).str.contains(active_id, case=False, na=False)] if customer_id_col in df.columns else df.loc[[int(active_id)]]
+                if customer_id_col in df.columns:
+                    selected_row = df[df[customer_id_col].astype(str).str.contains(active_id, case=False, na=False)]
+                else:
+                    selected_row = df.loc[[int(active_id)]]
                 encoded_row = apply_encoders(selected_row.copy(), encoders)
                 encoded_row = encoded_row[feature_cols]
                 pred_prob = model.predict_proba(encoded_row)[0][1]
