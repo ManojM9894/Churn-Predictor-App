@@ -10,7 +10,7 @@ from train_dynamic import (
 st.set_page_config(page_title="Churn Predictor App")
 st.title("\U0001F4C8 Churn Predictor App")
 
-uploaded_file = st.file_uploader("Upload your CSV or Excel dataset", type=["csv", "xlsx"])
+uploaded_file = st.file_uploader("Upload your CSV dataset", type=["csv"])
 
 if uploaded_file is not None:
     if uploaded_file.name.endswith(".xlsx"):
@@ -58,7 +58,8 @@ if uploaded_file is not None:
 
         st.subheader("\U0001F4B8 Top 50 Customers Likely to Churn")
         st.dataframe(
-            top_50[["customerID", "Prediction", "Probability"]] if "customerID" in top_50.columns else top_50[["Prediction", "Probability"]]
+            top_50[["customerID", "Prediction", "Probability"]] if "customerID" in top_50.columns else top_50[
+                ["Prediction", "Probability"]]
         )
 
         top_csv = top_50.to_csv(index=False).encode("utf-8")
@@ -73,11 +74,11 @@ if uploaded_file is not None:
 
         st.subheader("👤 Predict Churn for a Customer")
         st.markdown("Select a customer from all customers, sorted by churn risk.")
-        st.caption(f"Using `{customer_id_col}` as the customer identifier column.")
 
         try:
             if customer_id_col in df_results.columns:
-                sorted_ids = df_results.sort_values(by="Probability", ascending=False)[customer_id_col].astype(str).tolist()
+                sorted_ids = df_results.sort_values(by="Probability", ascending=False)[customer_id_col].astype(
+                    str).tolist()
             elif customer_id_col == "index":
                 sorted_ids = df_results.sort_values(by="Probability", ascending=False).index.astype(str).tolist()
             else:
@@ -89,7 +90,8 @@ if uploaded_file is not None:
         entry_mode = st.radio("Choose input method:", ["Dropdown", "Type to search by ID or Name"], horizontal=True)
 
         if entry_mode == "Dropdown":
-            manual_id = st.selectbox("Select Customer ID (sorted by churn risk):", options=sorted_ids, index=0, key="manual_id_dropdown")
+            manual_id = st.selectbox("Select Customer ID (sorted by churn risk):", options=sorted_ids, index=0,
+                                     key="manual_id_dropdown")
         else:
             manual_id = st.text_input("Search by customer ID or name:", key="manual_id_text")
 
