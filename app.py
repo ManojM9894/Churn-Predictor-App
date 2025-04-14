@@ -43,7 +43,6 @@ if uploaded_file is not None:
         df_results["Prediction"] = preds
         df_results["Probability"] = probs
 
-        # Save to session
         st.session_state.model = model
         st.session_state.encoders = encoders
         st.session_state.feature_cols = feature_cols
@@ -65,21 +64,27 @@ if uploaded_file is not None:
         top_csv = top_50.to_csv(index=False).encode("utf-8")
         st.download_button("📥 Download Top 50 Risky Customers", top_csv, "top_50_risky_customers.csv", "text/csv")
 
-        # --- Determine identifier column ---
         preferred_ids = ["customerID", "Customer Name", "Name", "CustomerId", "RowNumber", "ID"]
         customer_id_col = next((col for col in preferred_ids if col in df.columns and df[col].is_unique), None)
         if customer_id_col is None:
-            df = df.reset_index()  # Ensure index is usable
+            df = df.reset_index()
+            df_results = df_results.reset_index()
             customer_id_col = "index"
 
         st.subheader("👤 Predict Churn for a Customer")
         st.markdown("Select a customer from all customers, sorted by churn risk.")
         st.caption(f"Using `{customer_id_col}` as the customer identifier column.")
 
-        if customer_id_col in df_results.columns:
-            sorted_ids = df_results.sort_values(by="Probability", ascending=False)[customer_id_col].astype(str).tolist()
-        else:
-            sorted_ids = df_results.index.astype(str).tolist()
+        try:
+            if customer_id_col in df_results.columns:
+                sorted_ids = df_results.sort_values(by="Probability", ascending=False)[customer_id_col].astype(str).tolist()
+            elif customer_id_col == "index":
+                sorted_ids = df_results.sort_values(by="Probability", ascending=False).index.astype(str).tolist()
+            else:
+                raise KeyError(f"Identifier column '{customer_id_col}' not found.")
+        except Exception as e:
+            st.error(f"Unable to identify customers: {e}")
+            sorted_ids = []
 
         entry_mode = st.radio("Choose input method:", ["Dropdown", "Type to search by ID or Name"], horizontal=True)
 
@@ -110,7 +115,6 @@ if uploaded_file is not None:
             except Exception as e:
                 st.error(f"Customer not found or invalid input: {e}")
 
-        # Global Feature Importance
         st.subheader("📊 Top Churn Drivers (Global Feature Importance)")
         rf_model = model.named_estimators_["rf"]
         importances = pd.Series(rf_model.feature_importances_, index=feature_cols).sort_values(ascending=True)
