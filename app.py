@@ -140,6 +140,7 @@ if uploaded_file is not None:
                 st.error(f"Customer not found or invalid input: {e}")
 
         st.subheader("📊 Churn KPIs")
+        st.caption("These KPIs are dynamic and depend on your uploaded dataset and prediction results.")
         total_customers = len(df_results)
         churn_rate = df_results["Prediction"].mean() * 100
         avg_risk_score = df_results["Probability"].mean() * 100
@@ -148,6 +149,25 @@ if uploaded_file is not None:
         col1.metric("Total Customers", f"{total_customers:,}")
         col2.metric("Churn Rate", f"{churn_rate:.2f}%")
         col3.metric("Avg. Risk Score", f"{avg_risk_score:.2f}%")
+
+        st.subheader("🔍 Confusion Matrix (Validation)")
+        from sklearn.metrics import confusion_matrix, ConfusionMatrixDisplay
+
+        try:
+            cm = confusion_matrix(df_results[target_column], df_results["Prediction"])
+            disp = ConfusionMatrixDisplay(confusion_matrix=cm)
+            fig_cm, ax_cm = plt.subplots()
+            disp.plot(ax=ax_cm)
+            st.pyplot(fig_cm)
+        except Exception as e:
+            st.warning(f"Confusion Matrix could not be displayed: {e}")
+
+        st.subheader("📊 Churn Rate by Contract Type")
+        try:
+            chart = df_results.groupby("Contract")["Prediction"].mean().sort_values()
+            st.bar_chart(chart)
+        except Exception as e:
+            st.info("Upload a dataset with 'Contract' column to enable this chart.")
 
         st.subheader("📈 Churn Risk Distribution (All Customers)")
         risk_counts = df_results["Risk Segment"].value_counts()
