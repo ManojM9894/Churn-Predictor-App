@@ -1,200 +1,101 @@
 import streamlit as st
 import pandas as pd
+import numpy as np
+import shap
+import pickle
+import requests
+import io
+from sklearn.ensemble import RandomForestClassifier
 import matplotlib.pyplot as plt
-from rapidfuzz import process
 
-from train_dynamic import (
-    train_model_from_upload,
-    apply_encoders,
-    predict_with_model
-)
+# ---------- Load model & encoders ----------
 
-st.set_page_config(page_title="Churn Predictor App")
-st.title("\U0001F4C8 Churn Predictor App")
+@st.cache_resource
+def load_artifacts():
+    try:
+        with open("customer_churn_model.pkl", "rb") as f:
+            model_data = pickle.load(f)
+        with open("encoders.pkl", "rb") as f:
+            encoders = pickle.load(f)
+        return model_data["model"], model_data["features_names"], encoders
+    except Exception:
+        model_url = "https://drive.google.com/uc?id=<your-model-file-id>"
+        encoder_url = "https://drive.google.com/uc?id=<your-encoder-file-id>"
+        model_data = pickle.load(io.BytesIO(requests.get(model_url).content))
+        encoders = pickle.load(io.BytesIO(requests.get(encoder_url).content))
+        return model_data["model"], model_data["features_names"], encoders
 
-uploaded_file = st.file_uploader("Upload your CSV dataset", type=["csv"])
+model, feature_names, encoders = load_artifacts()
 
-if uploaded_file is not None:
-    if uploaded_file.name.endswith(".xlsx"):
-        df = pd.read_excel(uploaded_file)
-    else:
-        df = pd.read_csv(uploaded_file)
-    st.success("✅ File uploaded successfully!")
+# ---------- Load CSV of risky customers ----------
 
-    if st.checkbox("Preview uploaded data"):
-        st.dataframe(df.head())
+@st.cache_data
+def load_customer_list():
+    try:
+        df = pd.read_csv("top_50_risky_customers.csv")
+    except:
+        url = "https://drive.google.com/uc?id=<your-top50-file-id>"
+        df = pd.read_csv(url)
+    return df
 
-    excluded = ["customerID", "id"]
-    binary_cols = [col for col in df.columns if df[col].nunique() == 2 and col not in excluded]
+top_customers = load_customer_list()
 
-    target_column = st.selectbox("Select the target", binary_cols)
+# ---------- UI Layout ----------
 
-    if "model" not in st.session_state:
-        st.session_state.model = None
-        st.session_state.encoders = None
-        st.session_state.feature_cols = None
-        st.session_state.df_results = None
-        st.session_state.top_50 = None
+st.title("Telco Churn Predictor + SHAP")
+selected_id = st.selectbox("Select a Customer ID", top_customers["customerID"].values)
 
-    if st.button("Predict Churn"):
-        model, encoders, feature_cols = train_model_from_upload(df, target_column)
-        df_encoded = apply_encoders(df.copy(), encoders)
-        df_encoded = df_encoded[feature_cols]
-        preds, probs = predict_with_model(model, df_encoded)
-        df_results = df.copy()
-        df_results["Prediction"] = preds
-        df_results["Probability"] = probs
+selected_row = top_customers[top_customers["customerID"] == selected_id].iloc[0]
 
+# ---------- Auto-prefill ----------
 
-        # ➕ Add churn risk segment
-        def risk_segment(prob):
-            if prob > 0.7:
-                return "🚨 High"
-            elif prob > 0.4:
-                return "⚠️ Medium"
-            else:
-                return "✅ Low"
+def get_customer_input():
+    default_input = {
+        "gender": "Female",
+        "SeniorCitizen": 0,
+        "Partner": "Yes",
+        "Dependents": "No",
+        "tenure": int(selected_row["tenure"]),
+        "PhoneService": "Yes",
+        "MultipleLines": "No",
+        "InternetService": "DSL",
+        "OnlineSecurity": "No",
+        "OnlineBackup": "Yes",
+        "DeviceProtection": "No",
+        "TechSupport": "No",
+        "StreamingTV": "No",
+        "StreamingMovies": "No",
+        "Contract": "Month-to-month",
+        "PaperlessBilling": "Yes",
+        "PaymentMethod": "Electronic check",
+        "MonthlyCharges": float(selected_row["MonthlyCharges"]),
+        "TotalCharges": float(selected_row["MonthlyCharges"] * selected_row["tenure"])
+    }
 
+    return default_input
 
-        df_results["Risk Segment"] = df_results["Probability"].apply(risk_segment)
+input_data = get_customer_input()
+input_df = pd.DataFrame([input_data])
 
-        st.session_state.model = model
-        st.session_state.encoders = encoders
-        st.session_state.feature_cols = feature_cols
-        st.session_state.df_results = df_results
-        st.session_state.top_50 = df_results.sort_values(by="Probability", ascending=False).head(50)
+# Encode input
+for col, encoder in encoders.items():
+    input_df[col] = encoder.transform(input_df[col])
 
-    if st.session_state.df_results is not None:
-        model = st.session_state.model
-        encoders = st.session_state.encoders
-        feature_cols = st.session_state.feature_cols
-        df_results = st.session_state.df_results
-        top_50 = st.session_state.top_50
+input_df = input_df[feature_names]
 
-        st.subheader("\U0001F4B8 Top 50 Customers Likely to Churn")
-        st.dataframe(
-            top_50[["customerID", "Prediction", "Probability"]] if "customerID" in top_50.columns else top_50[
-                ["Prediction", "Probability"]]
-        )
+# ---------- Predict ----------
+prediction = model.predict(input_df)[0]
+probability = model.predict_proba(input_df)[0][1]
 
-        top_csv = top_50.to_csv(index=False).encode("utf-8")
-        st.download_button("📥 Download Top 50 Risky Customers", top_csv, "top_50_risky_customers.csv", "text/csv")
+st.subheader("Prediction Result")
+st.write(f"**Churn Prediction:** {'Yes' if prediction else 'No'}")
+st.write(f"**Churn Probability:** {probability * 100:.2f}%")
 
-        preferred_ids = ["customerID", "Customer Name", "Name", "CustomerId", "RowNumber", "ID"]
-        customer_id_col = next((col for col in preferred_ids if col in df.columns and df[col].is_unique), None)
-        if customer_id_col is None:
-            df = df.reset_index()
-            df_results = df_results.reset_index()
-            customer_id_col = "index"
+# ---------- SHAP Explanation ----------
+explainer = shap.Explainer(model, input_df)
+shap_values = explainer(input_df)
 
-        st.subheader("👤 Predict Churn for a Customer")
-        st.markdown("Select a customer from all customers, sorted by churn risk.")
-
-        try:
-            if customer_id_col in df_results.columns:
-                sorted_ids = df_results.sort_values(by="Probability", ascending=False)[customer_id_col].astype(
-                    str).tolist()
-            elif customer_id_col == "index":
-                sorted_ids = df_results.sort_values(by="Probability", ascending=False).index.astype(str).tolist()
-            else:
-                raise KeyError(f"Identifier column '{customer_id_col}' not found.")
-        except Exception as e:
-            st.error(f"Unable to identify customers: {e}")
-            sorted_ids = []
-
-        entry_mode = st.radio("Choose input method:", ["Dropdown", "Type to search by ID or Name"], horizontal=True)
-
-        if entry_mode == "Dropdown":
-            manual_id = st.selectbox("Select Customer ID (sorted by churn risk):", options=sorted_ids, index=0,
-                                     key="manual_id_dropdown")
-        else:
-            manual_id = st.text_input("Search by customer ID or name:", key="manual_id_text")
-
-        active_id = manual_id
-
-        if active_id:
-            try:
-                if customer_id_col in df.columns:
-                    choices = df[customer_id_col].astype(str).tolist()
-                    match = process.extractOne(active_id, choices, score_cutoff=60)
-
-                    if match:
-                        selected_row = df[df[customer_id_col].astype(str) == match[0]]
-                        st.caption(f"Best match: `{match[0]}` with confidence {match[1]:.1f}%")
-                    else:
-                        selected_row = pd.DataFrame()
-                else:
-                    selected_row = df[df.index.astype(str) == str(active_id)]
-
-                if selected_row.empty:
-                    raise ValueError("No matching customer found.")
-
-                encoded_row = apply_encoders(selected_row.copy(), encoders)
-                encoded_row = encoded_row[feature_cols]
-                pred_prob = model.predict_proba(encoded_row)[0][1]
-                churn_risk = "🚨 High Risk" if pred_prob > 0.7 else "⚠️ Medium Risk" if pred_prob > 0.4 else "✅ Low Risk"
-                st.markdown(f"### Prediction for `{active_id}`")
-                st.metric("Churn Probability", f"{pred_prob * 100:.2f}%", help=churn_risk)
-                st.dataframe(selected_row)
-            except Exception as e:
-                st.error(f"Customer not found or invalid input: {e}")
-
-        st.subheader("📊 Churn KPIs")
-        st.caption("These KPIs are dynamic and depend on your uploaded dataset and prediction results.")
-        total_customers = len(df_results)
-        churn_rate = df_results["Prediction"].mean() * 100
-        avg_risk_score = df_results["Probability"].mean() * 100
-
-        col1, col2, col3 = st.columns(3)
-        col1.metric("Total Customers", f"{total_customers:,}")
-        col2.metric("Churn Rate", f"{churn_rate:.2f}%")
-        col3.metric("Avg. Risk Score", f"{avg_risk_score:.2f}%")
-
-        st.subheader("🔍 Confusion Matrix (Validation)")
-        from sklearn.metrics import confusion_matrix, ConfusionMatrixDisplay
-
-        try:
-            from sklearn.preprocessing import LabelEncoder
-
-            true_labels = df_results[target_column]
-            if true_labels.dtype == object:
-                true_labels = LabelEncoder().fit_transform(true_labels)
-            cm = confusion_matrix(true_labels, df_results["Prediction"])
-            disp = ConfusionMatrixDisplay(confusion_matrix=cm)
-            fig_cm, ax_cm = plt.subplots()
-            disp.plot(ax=ax_cm, cmap="Blues")
-            st.pyplot(fig_cm)
-        except Exception as e:
-            st.warning(f"Confusion Matrix could not be displayed: {e}")
-
-        try:
-            if "Contract" in df_results.columns:
-                st.subheader("📊 Churn Rate by Contract Type")
-                chart = df_results.groupby("Contract")["Prediction"].mean().sort_values()
-                st.bar_chart(chart)
-        except Exception as e:
-            st.warning(f"Churn rate by contract type could not be displayed: {e}")
-
-        st.subheader("📈 Churn Risk Distribution (All Customers)")
-        risk_counts = df_results["Risk Segment"].value_counts().reindex(["✅ Low", "⚠️ Medium", "🚨 High"]).dropna()
-        fig, ax = plt.subplots()
-        colors = ["#10B981", "#FACC15", "#EF4444"]  # Red, Yellow, Green
-        ax.pie(risk_counts, labels=risk_counts.index, colors=colors, autopct="%1.1f%%", startangle=90)
-        ax.axis("equal")
-        st.pyplot(fig)
-
-        st.subheader("📊 Top Churn Drivers (Global Feature Importance)")
-        rf_model = model.named_estimators_["rf"]
-        importances = pd.Series(rf_model.feature_importances_, index=feature_cols).sort_values(ascending=True)
-
-        fig, ax = plt.subplots(figsize=(10, 6))
-        importances.plot(kind="bar", ax=ax)
-        ax.set_title("Top Churn Indicators")
-        ax.set_xlabel("Importance Score")
-        st.pyplot(fig)
-
-        st.subheader("📝 Download All Predictions")
-        csv_data = df_results.to_csv(index=False).encode("utf-8")
-        st.download_button("📥 Download All Predictions", csv_data, "churn_predictions.csv", "text/csv")
-else:
-    st.info("Please upload a CSV file to get started.")
+st.subheader("SHAP Churn Drivers (Bar)")
+fig, ax = plt.subplots()
+shap.plots.bar(shap_values[0], show=False)
+st.pyplot(fig)
