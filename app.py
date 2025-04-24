@@ -19,8 +19,9 @@ def load_artifacts():
             encoders = pickle.load(f)
         return model_data["model"], model_data["features_names"], encoders
     except Exception:
-        model_url = "https://drive.google.com/uc?id=<your-model-file-id>"
-        encoder_url = "https://drive.google.com/uc?id=<your-encoder-file-id>"
+        # 🔗 Fallback: Load from Google Drive
+        model_url = "https://drive.google.com/uc?id=1VvP5h4DkmNRdJkgS8yMfJvXpqR4zuyLE"
+        encoder_url = "https://drive.google.com/uc?id=1XyZ8aBcD9eFgHiJkLmNoPQrsTuvWxyz"
         model_data = pickle.load(io.BytesIO(requests.get(model_url).content))
         encoders = pickle.load(io.BytesIO(requests.get(encoder_url).content))
         return model_data["model"], model_data["features_names"], encoders
@@ -34,7 +35,8 @@ def load_customer_list():
     try:
         df = pd.read_csv("top_50_risky_customers.csv")
     except:
-        url = "https://drive.google.com/uc?id=<your-top50-file-id>"
+        # 🔗 Fallback: Load CSV from Google Drive
+        url = "https://drive.google.com/uc?id=1PQzTUV8xyzLMNOghijkAbCdEfGhjKLmn"
         df = pd.read_csv(url)
     return df
 
@@ -42,15 +44,16 @@ top_customers = load_customer_list()
 
 # ---------- UI Layout ----------
 
-st.title("Telco Churn Predictor + SHAP")
-selected_id = st.selectbox("Select a Customer ID", top_customers["customerID"].values)
+st.set_page_config(page_title="Churn Predictor", layout="centered")
+st.title("Multi-Industry Churn Predictor + SHAP")
 
+selected_id = st.selectbox("Select a Customer ID", top_customers["customerID"].values)
 selected_row = top_customers[top_customers["customerID"] == selected_id].iloc[0]
 
 # ---------- Auto-prefill ----------
 
 def get_customer_input():
-    default_input = {
+    return {
         "gender": "Female",
         "SeniorCitizen": 0,
         "Partner": "Yes",
@@ -72,12 +75,11 @@ def get_customer_input():
         "TotalCharges": float(selected_row["MonthlyCharges"] * selected_row["tenure"])
     }
 
-    return default_input
-
 input_data = get_customer_input()
 input_df = pd.DataFrame([input_data])
 
-# Encode input
+# ---------- Encode Input ----------
+
 for col, encoder in encoders.items():
     input_df[col] = encoder.transform(input_df[col])
 
@@ -95,7 +97,7 @@ st.write(f"**Churn Probability:** {probability * 100:.2f}%")
 explainer = shap.Explainer(model, input_df)
 shap_values = explainer(input_df)
 
-st.subheader("SHAP Churn Drivers (Bar)")
+st.subheader(" SHAP Churn Drivers (Bar)")
 fig, ax = plt.subplots()
 shap.plots.bar(shap_values[0], show=False)
 st.pyplot(fig)
