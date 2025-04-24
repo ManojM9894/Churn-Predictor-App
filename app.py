@@ -19,9 +19,9 @@ def load_artifacts():
             encoders = pickle.load(f)
         return model_data["model"], model_data["features_names"], encoders
     except Exception:
-        # 🔗 Fallback: Load from Google Drive
-        model_url = "https://drive.google.com/uc?id=1VvP5h4DkmNRdJkgS8yMfJvXpqR4zuyLE"
-        encoder_url = "https://drive.google.com/uc?id=1XyZ8aBcD9eFgHiJkLmNoPQrsTuvWxyz"
+        # Fallback: Load from Google Drive
+        model_url = "https://drive.google.com/uc?id=13557t4yjZ-bbgtKhSF3S634D-hfeT5ot"
+        encoder_url = "https://drive.google.com/uc?id=12uH69ZbbaL7bOR6ZFmCAieyTFgFxJ2dl"
         model_data = pickle.load(io.BytesIO(requests.get(model_url).content))
         encoders = pickle.load(io.BytesIO(requests.get(encoder_url).content))
         return model_data["model"], model_data["features_names"], encoders
